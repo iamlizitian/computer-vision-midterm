@@ -1,9 +1,13 @@
 let capture;
 let poseNet;
 let poses = [];
+const cam_w = 1024;
+const cam_h = 768;
+let particlesLeftHand = [];
+let particlesRightHand = [];
 
 function setup() {
-  createCanvas(1024, 768);
+  createCanvas(cam_w, cam_h);
   capture = createCapture(VIDEO);
   capture.size(width, height);
   //frameRate(30)
@@ -44,6 +48,28 @@ function draw() {
   image(capture, 0, 0, width, height);
   drawHeadSwaps();
   pop();
+  
+  if (poses.length > 1) {
+    drawParticles();
+  }
+
+  for (let i = 0; i < particlesLeftHand.length; i++) {
+    let p = particlesLeftHand[i];
+    p.update();
+    p.display();
+    if (p.alpha < 0) {
+      particlesLeftHand.shift();
+    }
+  }
+
+  for (let i = 0; i < particlesRightHand.length; i++) {
+    let p = particlesRightHand[i];
+    p.update();
+    p.display();
+    if (p.alpha < 0) {
+      particlesRightHand.shift();
+    }
+  }
 
   
   
@@ -80,3 +106,104 @@ function getHead(pose) {
   );
   return headImage;
 }
+
+function drawParticles() {
+  let pose0 = poses[0].pose;
+  let pose1 = poses[1].pose;
+
+  //let personLeft;
+  //let personRight;
+
+  // check to see which side each person is on
+  if (pose0.nose.x < pose1.nose.x) {
+    personLeft = pose0;
+    personRight = pose1;
+  } else {
+    personLeft = pose1;
+    personRight = pose0;
+  }
+
+  let leftWrist0 = pose0.keypoints.find((point) => point.part === "leftWrist");
+  let rightWrist0 = pose0.keypoints.find(
+    (point) => point.part === "rightWrist"
+  );
+
+  let leftWrist1 = pose1.keypoints.find((point) => point.part === "leftWrist");
+  let rightWrist1 = pose1.keypoints.find(
+    (point) => point.part === "rightWrist"
+  );
+
+  if (leftWrist0 && leftWrist0.position.y < cam_h - 50) {
+    for (let i = 0; i < 5; i++) {
+      let randomColor = color(random(255));
+      particlesLeftHand.push(
+        new Particle(width-leftWrist0.position.x, leftWrist0.position.y, randomColor)
+      );
+    }
+  }
+
+  if (rightWrist0 && rightWrist0.position.y < cam_h - 50) {
+    for (let i = 0; i < 5; i++) {
+      let randomColor = color(random(255), random(255), random(255));
+      particlesRightHand.push(
+        new Particle(
+          width-rightWrist0.position.x,
+          rightWrist0.position.y,
+          randomColor
+        )
+      );
+    }
+  }
+
+  if (leftWrist1 && leftWrist1.position.y < cam_h - 50) {
+    for (let i = 0; i < 5; i++) {
+      let randomColor = color(random(255));
+      particlesLeftHand.push(
+        new Particle(width-leftWrist0.position.x, leftWrist0.position.y, randomColor)
+      );
+    }
+  }
+
+  if (rightWrist1 && rightWrist1.position.y < cam_h - 50) {
+    for (let i = 0; i < 5; i++) {
+      let randomColor = color(random(255), random(255), random(255));
+      particlesRightHand.push(
+        new Particle(
+          width-rightWrist1.position.x,
+          rightWrist1.position.y,
+          randomColor
+        )
+      );
+    }
+  }
+}
+
+class Particle {
+  constructor(x, y, color) {
+    this.x = x;
+    this.y = y;
+    this.vx = random(-2, 2);
+    this.vy = random(-2, 2);
+    this.color = color;
+    this.diameter = random(10, 25);
+    this.alpha = 255;
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.alpha -= 2;
+  }
+
+  display() {
+    noStroke();
+    fill(
+      this.color.levels[0],
+      this.color.levels[1],
+      this.color.levels[2],
+      this.alpha
+    );
+    ellipse(this.x, this.y, this.diameter, this.diameter);
+  }
+}
+
